@@ -1,0 +1,11 @@
+*.class
+.idea
+target
+.tmp
+*.iml
+.settings
+.project
+.classpath
+CLAUDE.md
+.claude/
+.devcontainer/
