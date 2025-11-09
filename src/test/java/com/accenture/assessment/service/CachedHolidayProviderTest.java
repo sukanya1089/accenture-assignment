@@ -256,6 +256,118 @@ class CachedHolidayProviderTest {
         verify(underlyingProvider, times(2)).getPublicHolidays(year, countryCode);
     }
 
+    @Test
+    void testCacheLimitWithLruEviction() {
+        // Arrange - Create cache with small limit
+        int maxSize = 3;
+        CachedHolidayProvider limitedCache = new CachedHolidayProvider(underlyingProvider, maxSize);
+
+        // Setup mock responses for 4 different countries
+        for (int i = 1; i <= 4; i++) {
+            String country = "C" + i;
+            when(underlyingProvider.getPublicHolidays(2024, country))
+                    .thenReturn(createTestHolidays(2024, country));
+        }
+
+        // Act - Add 4 entries (exceeds limit of 3)
+        limitedCache.getPublicHolidays(2024, "C1"); // Entry 1
+        limitedCache.getPublicHolidays(2024, "C2"); // Entry 2
+        limitedCache.getPublicHolidays(2024, "C3"); // Entry 3
+        limitedCache.getPublicHolidays(2024, "C4"); // Entry 4 - should evict C1 (oldest)
+
+        // Try to get C1 again - should call provider again (was evicted)
+        limitedCache.getPublicHolidays(2024, "C1"); // Should evict C2
+
+        // Try to get C2, C3, C4 - should use cache
+        limitedCache.getPublicHolidays(2024, "C3"); // No Eviction, should fetch from Cache
+        limitedCache.getPublicHolidays(2024, "C4"); // No Eviction, should fetch from Cache
+        limitedCache.getPublicHolidays(2024, "C2"); // Should invoke underlying provider
+
+        // Assert
+        verify(underlyingProvider, times(2)).getPublicHolidays(2024, "C1"); // Called twice (evicted)
+        verify(underlyingProvider, times(2)).getPublicHolidays(2024, "C2"); // Cached
+        verify(underlyingProvider, times(1)).getPublicHolidays(2024, "C3"); // Cached
+        verify(underlyingProvider, times(1)).getPublicHolidays(2024, "C4"); // Cached
+    }
+
+    @Test
+    void testLruBehavior_AccessUpdatesOrder() {
+        // Arrange - Create cache with limit of 2
+        int maxSize = 2;
+        CachedHolidayProvider limitedCache = new CachedHolidayProvider(underlyingProvider, maxSize);
+
+        when(underlyingProvider.getPublicHolidays(2024, "C1")).thenReturn(createTestHolidays(2024, "C1"));
+        when(underlyingProvider.getPublicHolidays(2024, "C2")).thenReturn(createTestHolidays(2024, "C2"));
+        when(underlyingProvider.getPublicHolidays(2024, "C3")).thenReturn(createTestHolidays(2024, "C3"));
+
+        // Act
+        limitedCache.getPublicHolidays(2024, "C1"); // Entry 1
+        limitedCache.getPublicHolidays(2024, "C2"); // Entry 2
+        limitedCache.getPublicHolidays(2024, "C1"); // Access C1 (makes it most recent)
+        limitedCache.getPublicHolidays(2024, "C3"); // Entry 3 - should evict C2 (least recent)
+
+        // Verify C1 and C3 are cached, C2 was evicted
+        limitedCache.getPublicHolidays(2024, "C1"); // Should use cache
+        limitedCache.getPublicHolidays(2024, "C3"); // Should use cache
+        limitedCache.getPublicHolidays(2024, "C2"); // Should call provider (was evicted)
+
+        // Assert
+        verify(underlyingProvider, times(1)).getPublicHolidays(2024, "C1"); // Only initial call
+        verify(underlyingProvider, times(2)).getPublicHolidays(2024, "C2"); // Called twice (evicted)
+        verify(underlyingProvider, times(1)).getPublicHolidays(2024, "C3"); // Only initial call
+    }
+
+    @Test
+    void testCustomMaxCacheSize() {
+        // Arrange
+        int customSize = 50;
+        CachedHolidayProvider customCache = new CachedHolidayProvider(underlyingProvider, customSize);
+
+        // Act - Add 50 entries
+        for (int i = 0; i < 50; i++) {
+            String country = "C" + i;
+            when(underlyingProvider.getPublicHolidays(2024, country))
+                    .thenReturn(createTestHolidays(2024, country));
+            customCache.getPublicHolidays(2024, country);
+        }
+
+        // Access all 50 again - should all be cached
+        for (int i = 0; i < 50; i++) {
+            String country = "C" + i;
+            customCache.getPublicHolidays(2024, country);
+        }
+
+        // Assert - Each should be called only once (all cached)
+        for (int i = 0; i < 50; i++) {
+            verify(underlyingProvider, times(1)).getPublicHolidays(2024, "C" + i);
+        }
+    }
+
+    @Test
+    void testDefaultMaxCacheSize() {
+        // Arrange - Using default constructor (should use DEFAULT_MAX_CACHE_SIZE = 100)
+        CachedHolidayProvider defaultCache = new CachedHolidayProvider(underlyingProvider);
+
+        // Act - Add 100 entries
+        for (int i = 0; i < 100; i++) {
+            String country = "C" + i;
+            when(underlyingProvider.getPublicHolidays(2024, country))
+                    .thenReturn(createTestHolidays(2024, country));
+            defaultCache.getPublicHolidays(2024, country);
+        }
+
+        // Access all 100 again - should all be cached
+        for (int i = 0; i < 100; i++) {
+            String country = "C" + i;
+            defaultCache.getPublicHolidays(2024, country);
+        }
+
+        // Assert - Each should be called only once (all cached)
+        for (int i = 0; i < 100; i++) {
+            verify(underlyingProvider, times(1)).getPublicHolidays(2024, "C" + i);
+        }
+    }
+
     // Helper method to create test holidays
     private List<PublicHoliday> createTestHolidays(int year, String countryCode) {
         PublicHoliday holiday1 = new PublicHoliday();
