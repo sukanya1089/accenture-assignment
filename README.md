@@ -25,7 +25,7 @@ The application provides three main functionalities:
 
 ## How to Run the Application
 
-### Option 1: Using Maven Wrapper (Recommended)
+### Option 1: Using Maven Wrapper
 
 The project includes Maven wrapper scripts, so you don't need to have Maven installed.
 
@@ -39,15 +39,7 @@ The project includes Maven wrapper scripts, so you don't need to have Maven inst
 mvnw.cmd spring-boot:run
 ```
 
-### Option 2: Using Installed Maven
-
-If you have Maven installed:
-
-```bash
-mvn spring-boot:run
-```
-
-### Option 3: Build and Run JAR
+### Option 2: Build and Run JAR
 
 1. Build the application:
    ```bash
@@ -75,48 +67,57 @@ Please select an option:
 4. Exit
 ```
 
-### Example Usage
 
-#### 1. Last Celebrated Holidays
+## REST API Endpoints
 
-```
-Enter your choice (1-4): 1
-Enter country code (e.g., US, GB, DE): US
+The application exposes REST API endpoints that can be accessed at `http://localhost:8080/api/holidays`.
 
-Last 3 celebrated holidays:
-----------------------------------------
-1. 2024-07-04 - Independence Day (Independence Day)
-2. 2024-05-27 - Memorial Day (Memorial Day)
-3. 2024-01-01 - New Year's Day (New Year's Day)
-```
+### API Examples with curl
 
-#### 2. Non-Weekend Holiday Count
+#### 1. Get Last 3 Celebrated Holidays
 
-```
-Enter your choice (1-4): 2
-Enter year: 2024
-Enter country codes separated by commas (e.g., US,GB,DE): US,GB,DE
+Get the last 3 celebrated holidays for a specific country:
 
-Non-weekend holiday count (sorted descending):
-----------------------------------------
-1. DE: 13 holidays
-2. GB: 8 holidays
-3. US: 10 holidays
+```bash
+curl http://localhost:8080/api/holidays/last-celebrated/US
 ```
 
-#### 3. Shared Holidays
+Try with different countries:
+```bash
+# United Kingdom
+curl http://localhost:8080/api/holidays/last-celebrated/GB
 
-```
-Enter your choice (1-4): 3
-Enter year: 2024
-Enter first country code: US
-Enter second country code: GB
+# Germany
+curl http://localhost:8080/api/holidays/last-celebrated/DE
 
-Shared holidays:
-----------------------------------------
-1. 2024-01-01: US - New Year's Day, GB - New Year's Day
-2. 2024-12-25: US - Christmas Day, GB - Christmas Day
+# France
+curl http://localhost:8080/api/holidays/last-celebrated/FR
 ```
+
+#### 2. Get Non-Weekend Holiday Count
+
+Get the count of holidays not falling on weekends for multiple countries:
+
+```bash
+curl "http://localhost:8080/api/holidays/non-weekend-count?year=2024&countries=US,GB,FR"
+```
+
+#### 3. Get Shared Holidays Between Two Countries
+
+Get holidays celebrated on the same dates by two countries:
+
+```bash
+curl "http://localhost:8080/api/holidays/shared?year=2024&country1=US&country2=GB"
+```
+
+#### 4. Health Check
+
+Verify the API is running:
+
+```bash
+curl http://localhost:8080/api/holidays/health
+```
+
 
 ## Running Tests
 
@@ -124,17 +125,5 @@ Run all unit tests:
 
 ```bash
 ./mvnw test
-```
-
-Run tests with detailed output:
-
-```bash
-./mvnw test -Dtest=HolidayServiceTest
-```
-
-Generate test coverage report (if configured):
-
-```bash
-./mvnw clean test jacoco:report
 ```
 
